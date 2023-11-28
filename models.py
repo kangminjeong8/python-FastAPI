@@ -25,7 +25,7 @@ class Task(Base):
     task_id = Column(Integer, primary_key=True, autoincrement=True)
     task_name = Column(String, nullable=False)
     task_type = Column(Integer, nullable=False)
-    workflow_name_info = Column(String, nullable=False)
+    workflow_name_info = Column(Json, nullable=False)
     is_using = Column(Integer)
     next_runtime = Column(String)
     created_at = Column(String)

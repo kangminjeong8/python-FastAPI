@@ -78,12 +78,10 @@ async def get_tasks_search(
     key: Optional[str] = None,  # 검색 키 추가 (옵셔널)
     content: Optional[str] = None  # 검색 내용 추가 (옵셔널)
 ):
-    tasks, total_count, last_page = crud.get_tasks_search(
-        db, page=page, limit=limit, key=key, content=content)
+    tasks, total_count, last_page = crud.get_tasks_search(db, page=page, limit=limit, key=key, content=content)
     total_pages = (total_count + limit - 1) // limit
 
     return {
-        "data": tasks,
         "pagination": {
             "nowPage": page,
             "startPage": max(1, page - 5),
@@ -91,7 +89,8 @@ async def get_tasks_search(
             "total": total_count,
             "cntPerPage": limit,
             "lastPage": last_page
-        }
+        },
+        "data": tasks
     }
 
 @app.get("/tasks/{task_id}", response_model=schemas.Task)

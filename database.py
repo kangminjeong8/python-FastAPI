@@ -2,7 +2,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
-SQLALCHEMY_DATABASE_URL = "sqlite:///C:\EyeT1.1\eyet_scheduling_data.db"
+SQLALCHEMY_DATABASE_URL = "sqlite:///C:\Dev\Python\\aladdin\eyet_api\eyet_scheduling_data.db"
 # SQLALCHEMY_DATABASE_URL = "postgresql://user:password@postgresserver/db"
 
 engine = create_engine(

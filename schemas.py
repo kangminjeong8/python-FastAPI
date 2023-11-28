@@ -43,7 +43,7 @@ class Task(BaseModel):
     task_id: int
     task_name: str
     task_type: int
-    workflow_name_info: str
+    workflow_name_info: dict
     is_using: int
     next_runtime: str
     created_at: str

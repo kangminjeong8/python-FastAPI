@@ -32,22 +32,24 @@ def get_tasks_search(db: Session, page: int = 1, limit: int = 10, key: str = Non
     # 기본 쿼리
     query = db.query(models.Task)
 
+    joined = query.join(models.TaskResult, models.Task.task_id == models.TaskResult.task_id)
+
+    
+
     # 검색 조건이 있는 경우 쿼리 수정
     if key and content:
         if key in field_mapping:
             field = field_mapping[key]
             if key == "selTableNmEng":
-                # query = query.filter(field.contains(content))
-                query = query.filter(func.json_extract(field, '$.WorkflowName').like(content))
-                #query = query.params(content=f"%{content}%")
+                result = joined.filter(func.json_extract(field, '$.0.WorkflowName').like(f'%{content}%'))
             elif key == "selModifyDate":
             # 입력된 내용에 따라 날짜 형식을 다르게 생성
                 if len(content) == 4:  # 년도만 입력된 경우
-                  query = query.filter(func.strftime('%Y', field) == content)
+                  result = joined.filter(func.strftime('%Y', field) == content)
                 elif len(content) == 6:  # 년도와 월이 입력된 경우
-                  query = query.filter(func.strftime('%Y-%m', field) == content[:4] + '-' + content[4:])
+                  result = joined.filter(func.strftime('%Y-%m', field) == content[:4] + '-' + content[4:])
                 elif len(content) == 8:  # 년도, 월, 일이 모두 입력된 경우
-                  query = query.filter(func.strftime('%Y-%m-%d', field) == content[:4] + '-' + content[4:6] + '-' + content[6:])
+                  result = joined.filter(func.strftime('%Y-%m-%d', field) == content[:4] + '-' + content[4:6] + '-' + content[6:])
                 else:
                     return [], 0, 0
             elif key == "selWorkflowState":
@@ -55,24 +57,21 @@ def get_tasks_search(db: Session, page: int = 1, limit: int = 10, key: str = Non
                 status_values = [value for status, value in status_map.items() if content in status]
                 if status_values:
                     # 일치하는 모든 result_type 값으로 필터링
-                    query = query.filter(models.TaskResult.result_type.in_(status_values))
+                    result = joined.filter(models.TaskResult.result_type.in_(status_values))
                 else:
                     # 일치하는 상태가 없는 경우, 결과 없음
                     return [], 0, 0
             else:
-                query = query.filter(field.contains(content))
+                result = joined.filter(field.contains(content))
     # 총 개수 계산 (검색 조건 적용 후)
-    
-    query = query.join(models.TaskResult, models.Task.task_id == models.TaskResult.task_id)
 
+    fetched = result.order_by(models.Task.task_id.desc()).offset((page - 1) * limit).limit(limit)     
+
+    print(fetched.statement.compile(compile_kwargs={"literal_binds": True}))
     # 페이징 적용
-    tasks = query.offset((page - 1) * limit).limit(limit).all()
-    
-    total_count = query.count()
+    tasks = fetched.all()
+    total_count = fetched.count()
     last_page = (total_count - 1) // limit + 1
-
-    query_str = str(query.statement.compile(compile_kwargs={"literal_binds": True}))
-    print(query_str)
 
     return tasks, total_count, last_page
 
