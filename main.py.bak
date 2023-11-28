@@ -1,0 +1,121 @@
+
+from fastapi import FastAPI, Path
+from fastapi.middleware.cors import CORSMiddleware
+
+from typing import Annotated
+from pydantic import BaseModel
+
+from datetime import datetime
+
+import sqlite3
+
+app = FastAPI()
+
+DB_PATH = "./eyet_scheduling_data.db"
+
+origins = [
+    "http://localhost",
+    "http://localhost:8000",
+    "http://localhost:8180",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+class Schedule(BaseModel):
+    schedule_id: int
+    schedule_name: str
+    start_time: datetime
+    cycle_type: int
+    everyhour_info: str
+    daily_info: str
+    weekly_info: str
+    monthly_info: str
+    option: str
+    reg_date: datetime
+
+
+@app.get("/schedules/")
+async def get_schedules():
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM schedule")
+    schedules = cursor.fetchall()
+    
+    columns = [desc[0] for desc in cursor.description]
+    data_list = [dict(zip(columns, row)) for row in schedules]
+
+    conn.close()
+
+    columns = conn.close()
+    return {
+        "data": data_list 
+    }
+
+@app.get("/schedules/{schedule_id}")
+async def get_schedule_one(schedule_id: int):
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM schedule WHERE schedule_id=?", (schedule_id,))
+    schedule = cursor.fetchone()
+
+    columns = [desc[0] for desc in cursor.description]
+    data = dict(zip(columns, schedule))
+
+    conn.close()
+    return {
+        "data": data
+    }
+
+@app.get("/tasks/")
+async def get_tasks():
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT 
+            * 
+        FROM 
+            task as t 
+            INNER JOIN task_result as r ON t.task_id = r.task_id 
+            INNER JOIN task_log as l ON t.task_id = l.task_id
+    """)
+    tasks = cursor.fetchall()
+    columns = [desc[0] for desc in cursor.description]
+    data_list = [dict(zip(columns, row)) for row in tasks]
+
+    conn.close()
+
+    columns = conn.close()
+    return {
+        "data": data_list 
+    }
+
+@app.get("/tasks/{task_id}")
+async def get_task_one(task_id: int):
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT 
+            * 
+        FROM 
+            task as t 
+            INNER JOIN task_result as r ON t.task_id = r.task_id 
+            INNER JOIN task_log as l ON t.task_id = l.task_id
+        WHERE
+            t.task_id=?""", (task_id,))
+    
+    task = cursor.fetchone()
+    columns = [desc[0] for desc in cursor.description]
+
+    data = dict(zip(columns, task))
+
+    conn.close()
+    return {
+        "data": data
+    }
+
