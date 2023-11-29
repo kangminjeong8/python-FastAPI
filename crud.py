@@ -32,9 +32,16 @@ def get_tasks_search(db: Session, page: int = 1, limit: int = 10, key: str = Non
     # 기본 쿼리
     query = db.query(models.Task)
 
-    joined = query.join(models.TaskResult, models.Task.task_id == models.TaskResult.task_id)
+    subquery = (
+        db.query(
+            models.TaskResult.task_id,
+            func.max(models.TaskResult.end_time).label('max_end_time')
+        )
+        .group_by(models.TaskResult.task_id)
+        .subquery()
+    )
 
-    
+    joined = query.join(subquery, models.Task.task_id == subquery.c.task_id)
 
     # 검색 조건이 있는 경우 쿼리 수정
     if key and content:
@@ -44,14 +51,15 @@ def get_tasks_search(db: Session, page: int = 1, limit: int = 10, key: str = Non
                 result = joined.filter(func.json_extract(field, '$.0.WorkflowName').like(f'%{content}%'))
             elif key == "selModifyDate":
             # 입력된 내용에 따라 날짜 형식을 다르게 생성
-                if len(content) == 4:  # 년도만 입력된 경우
-                  result = joined.filter(func.strftime('%Y', field) == content)
-                elif len(content) == 6:  # 년도와 월이 입력된 경우
-                  result = joined.filter(func.strftime('%Y-%m', field) == content[:4] + '-' + content[4:])
-                elif len(content) == 8:  # 년도, 월, 일이 모두 입력된 경우
-                  result = joined.filter(func.strftime('%Y-%m-%d', field) == content[:4] + '-' + content[4:6] + '-' + content[6:])
-                else:
-                    return [], 0, 0
+                result = joined.filter(func.strftime('%Y-%m-%d', subquery.c.max_end_time).like(f'%{content}%'))
+                # if len(content) == 4:  # 년도만 입력된 경우
+                #   result = joined.filter(func.strftime('%Y', field) == content)
+                # elif len(content) == 6:  # 년도와 월이 입력된 경우
+                #   result = joined.filter(func.strftime('%Y-%m', field) == content[:4] + '-' + content[4:])
+                # elif len(content) == 8:  # 년도, 월, 일이 모두 입력된 경우
+                #   result = joined.filter(func.strftime('%Y-%m-%d', field) == content[:4] + '-' + content[4:6] + '-' + content[6:])
+                # else:
+                #     return [], 0, 0
             elif key == "selWorkflowState":
                 # 입력된 상태 문자열이 매핑된 상태의 일부인지 확인
                 status_values = [value for status, value in status_map.items() if content in status]
@@ -70,7 +78,7 @@ def get_tasks_search(db: Session, page: int = 1, limit: int = 10, key: str = Non
     print(fetched.statement.compile(compile_kwargs={"literal_binds": True}))
     # 페이징 적용
     tasks = fetched.all()
-    total_count = fetched.count()
+    total_count = result.count()
     last_page = (total_count - 1) // limit + 1
 
     return tasks, total_count, last_page
