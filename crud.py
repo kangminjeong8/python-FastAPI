@@ -22,10 +22,10 @@ field_mapping = {
 }
 
 status_map = {
-    '실패': '0',
-    '성공': '1',
-    '작업 중': '2',
-    '작업 시작 전': '-1'
+    '실패': 0,
+    '성공': 1,
+    '작업 중': 2,
+    '작업 시작 전': -1
 }
 
 def get_tasks_search(db: Session, page: int = 1, limit: int = 10, key: str = None, content: str = None) -> Tuple[List[models.Task], int, int]:
@@ -35,6 +35,7 @@ def get_tasks_search(db: Session, page: int = 1, limit: int = 10, key: str = Non
     subquery = (
         db.query(
             models.TaskResult.task_id,
+            models.TaskResult.result_type,
             func.max(models.TaskResult.end_time).label('max_end_time')
         )
         .group_by(models.TaskResult.task_id)
@@ -65,21 +66,22 @@ def get_tasks_search(db: Session, page: int = 1, limit: int = 10, key: str = Non
                 status_values = [value for status, value in status_map.items() if content in status]
                 if status_values:
                     # 일치하는 모든 result_type 값으로 필터링
-                    result = joined.filter(models.TaskResult.result_type.in_(status_values))
+                    result = joined.filter(subquery.c.result_type.in_(status_values))
                 else:
                     # 일치하는 상태가 없는 경우, 결과 없음
                     return [], 0, 0
             else:
                 result = joined.filter(field.contains(content))
+    else:
+        result = joined           
     # 총 개수 계산 (검색 조건 적용 후)
 
-    fetched = result.order_by(models.Task.task_id.desc()).offset((page - 1) * limit).limit(limit)     
-
-    print(fetched.statement.compile(compile_kwargs={"literal_binds": True}))
-    # 페이징 적용
+    fetched = result.offset((page - 1) * limit).limit(limit)     
     tasks = fetched.all()
     total_count = result.count()
-    last_page = (total_count - 1) // limit + 1
+    last_page = (total_count - 1) // limit + 1  
+
+    print(fetched.statement.compile(compile_kwargs={"literal_binds": True}))
 
     return tasks, total_count, last_page
 
