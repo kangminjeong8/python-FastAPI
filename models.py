@@ -34,7 +34,7 @@ class Task(Base):
     reg_date = Column(DateTime, default=datetime.now().isoformat())
 
     task_logs = relationship("TaskLog", back_populates="task")
-    task_results = relationship("TaskResult", back_populates="task", order_by="desc(TaskResult.result_id)")
+    task_results = relationship("TaskResult", back_populates="task", order_by="desc(TaskResult.end_time)")
 
 class TaskLog(Base):
     __tablename__ = "task_log"
