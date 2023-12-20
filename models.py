@@ -1,5 +1,5 @@
 from sqlalchemy import Column, ForeignKey, Integer, String, DateTime, JSON as Json
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, Mapped
 
 from .database import Base
 
@@ -19,6 +19,8 @@ class Schedule(Base):
     option = Column(Json, nullable=False)
     reg_date = Column(String, nullable=False, default=datetime.now())
 
+    task = relationship("Task", back_populates="schedule")
+
 class Task(Base):
     __tablename__ = "task"
 
@@ -32,7 +34,11 @@ class Task(Base):
     updated_at = Column(DateTime, nullable=True)
     deleted_at = Column(DateTime, nullable=True)
     reg_date = Column(DateTime, default=datetime.now().isoformat())
+    schedule_id = Column(Integer, ForeignKey("schedule.schedule_id"))
+    schedule: Schedule
 
+    schedule: Mapped[Schedule] = relationship("Schedule", back_populates="task")
+    # schedule = relationship("Schedule", back_populates="task")
     task_logs = relationship("TaskLog", back_populates="task")
     task_results = relationship("TaskResult", back_populates="task", order_by="desc(TaskResult.end_time)")
 

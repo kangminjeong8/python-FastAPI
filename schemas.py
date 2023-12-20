@@ -52,6 +52,8 @@ class Task(BaseModel):
     reg_date: datetime
     task_logs: list[TaskLog]
     task_results: list[TaskResult]
+    schedule_id: int
+    schedule: Optional[Schedule]
 
     class Config:
         orm_mode = True
@@ -68,4 +70,8 @@ class Pagination(BaseModel):
 # 작업 목록과 페이징 정보를 포함하는 모델임
 class TaskList(BaseModel):
     data: List[Task]
+    pagination: Pagination
+
+class TaskDetList(BaseModel):
+    data: List[TaskResult]
     pagination: Pagination

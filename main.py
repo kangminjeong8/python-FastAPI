@@ -1,4 +1,4 @@
-from fastapi import Depends, FastAPI, HTTPException, Request, Response, Query
+from fastapi import Depends, FastAPI, HTTPException, Query
 from typing import Optional
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
@@ -68,33 +68,24 @@ async def get_tasks(
         "data": tasks
     }
 
-# @app.get("/tasks/search", response_model=TaskList)
-# async def get_tasks_search(db: Session = Depends(database.get_db), page: int = Query(1, alias="page"), limit: int = Query(10, alias="limit")):
-#     tasks, total_count, last_page = crud.get_tasks_search(db, page=page, limit=limit)
-#     total_pages = (total_count + limit - 1) // limit
-
-#     return {
-#         "data": tasks,
-#         "pagination": {
-#             "nowPage": page,
-#             "startPage": max(1, page - 5),
-#             "endPage": min(last_page, page + 5),
-#             "total": total_count,
-#             "cntPerPage": limit,
-#             "lastPage": last_page
-#         }
-#     }
-
 @app.get("/tasks/search", response_model=TaskList)
 async def get_tasks_search(
     db: Session = Depends(database.get_db), 
     page: int = Query(1, alias="page"), 
     limit: int = Query(10, alias="limit"),
     key: Optional[str] = None,  # 검색 키 추가 (옵셔널)
-    content: Optional[str] = None  # 검색 내용 추가 (옵셔널)
+    content: Optional[str] = None,  # 검색 내용 추가 (옵셔널)
+    startdate: Optional[str] = None,
+    enddate: Optional[str] = None
 ):
-    tasks, total_count, last_page = crud.get_tasks_search(db, page=page, limit=limit, key=key, content=content)
-    total_pages = (total_count + limit - 1) // limit
+    tasks, total_count, last_page = crud.get_tasks_search(
+        db, 
+        page=page, 
+        limit=limit, 
+        key=key, 
+        content=content, 
+        startdate=startdate,
+        enddate=enddate)
 
     return {
         "pagination": {
@@ -108,9 +99,34 @@ async def get_tasks_search(
         "data": tasks
     }
 
-@app.get("/tasks/{task_id}", response_model=schemas.Task)
-async def get_task_one(task_id: int, db: Session = Depends(get_db)):
-    db_task = crud.get_task_one(db, task_id=task_id)
-    if db_task is None:
-        raise HTTPException(status_code=404, detail="Task not found")
-    return db_task
+@app.get("/tasks/{task_id}", response_model=schemas.TaskDetList)
+async def get_task_one(
+    task_id: int, 
+    db: Session = Depends(get_db),
+    page: int = Query(1, alias="page"), 
+    limit: int = Query(10, alias="limit"),
+    key: Optional[str] = None,
+    startdate: Optional[str] = None,
+    enddate: Optional[str] = None,
+):
+    db_task, total_count, last_page = crud.get_task_one(
+        db,
+        task_id=task_id,
+        page=page,
+        limit=limit,
+        key=key,
+        startdate=startdate,
+        enddate=enddate
+    )
+
+    return {
+        "pagination": {
+            "nowPage": page,
+            "startPage": max(1, page - 5),
+            "endPage": min(last_page, page + 5),
+            "total": total_count,
+            "cntPerPage": limit,
+            "lastPage": last_page
+        },
+        "data": db_task
+    }

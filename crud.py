@@ -1,4 +1,4 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func
 from typing import List, Tuple
 from . import models
@@ -47,10 +47,8 @@ def get_tasks_search(
         .group_by(models.TaskResult.task_id)
         .subquery()
     )
-
-    joined = query.join(subquery, models.Task.task_id == subquery.c.task_id)
-    print(startdate, enddate)
-    print(key)
+    query = db.query(models.Task).join(subquery, models.Task.task_id == subquery.c.task_id)
+    joined = query.join(models.Schedule, models.Task.schedule_id == models.Schedule.schedule_id)
 
         # 검색 조건
     if key == 'all':
