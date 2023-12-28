@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from . import crud, models, schemas, database
 from .database import SessionLocal, engine
 from .schemas import TaskList, Task
+from math import ceil
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -56,11 +57,17 @@ async def get_tasks(
     
     tasks, total_count, last_page = crud.get_tasks(db, page=page, limit=limit)
 
+    cnt_page = 10  
+    page_group_number = (page - 1) // cnt_page
+    start_page = page_group_number * cnt_page + 1
+    end_page_candidate = start_page + cnt_page - 1
+    end_page = min(end_page_candidate, last_page)
+
     return {
         "pagination": {
             "nowPage": page,
-            "startPage": max(1, page - 5),
-            "endPage": min(last_page, page + 5),
+            "startPage": start_page,
+            "endPage": end_page,
             "total": total_count,
             "cntPerPage": limit,
             "lastPage": last_page
@@ -86,12 +93,19 @@ async def get_tasks_search(
         content=content, 
         startdate=startdate,
         enddate=enddate)
+    
+    cnt_page = 10  # 한 페이지 그룹에 표시될 페이지 수
+    page_group_number = (page - 1) // cnt_page
+    start_page = page_group_number * cnt_page + 1
+    # 현재 페이지 그룹의 마지막 페이지를 계산합니다.
+    end_page_candidate = start_page + cnt_page - 1
+    end_page = min(end_page_candidate, last_page)
 
     return {
         "pagination": {
             "nowPage": page,
-            "startPage": max(1, page - 5),
-            "endPage": min(last_page, page + 5),
+            "startPage": start_page,
+            "endPage": end_page,
             "total": total_count,
             "cntPerPage": limit,
             "lastPage": last_page
@@ -119,11 +133,18 @@ async def get_task_one(
         enddate=enddate
     )
 
+    cnt_page = 10  # 한 페이지 그룹에 표시될 페이지 수
+    page_group_number = (page - 1) // cnt_page
+    start_page = page_group_number * cnt_page + 1
+    # 현재 페이지 그룹의 마지막 페이지를 계산합니다.
+    end_page_candidate = start_page + cnt_page - 1
+    end_page = min(end_page_candidate, last_page)
+
     return {
         "pagination": {
             "nowPage": page,
-            "startPage": max(1, page - 5),
-            "endPage": min(last_page, page + 5),
+            "startPage": start_page,
+            "endPage": end_page,
             "total": total_count,
             "cntPerPage": limit,
             "lastPage": last_page

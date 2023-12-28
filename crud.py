@@ -1,5 +1,5 @@
-from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import func
+from sqlalchemy.orm import Session
+from sqlalchemy import func, cast, JSON, or_
 from typing import List, Tuple
 from . import models
 
@@ -55,26 +55,44 @@ def get_tasks_search(
         result = joined
     elif key in field_mapping:
         field = field_mapping[key]
-        if key == "selTableNmEng":
-            result = joined.filter(func.json_extract(field, '$.0.WorkflowName').like(f'%{content}%'))
+        if key == "selTableNmEng" and content:
+            if content:
+                search = f"%{content}%"
+                conditions = []
+                max_array_length = 5
+
+                for index in range(max_array_length):
+                    json_path = f'$.{index}.WorkflowName'
+                    conditions.append(func.json_extract(field, json_path).like(search))
+                result = joined.filter(or_(*conditions))
+                #result = joined.filter(func.json_extract(field, '$.1.WorkflowName').like(f'%{content}%'))
+            else:
+                result = joined
         elif key == "selModifyDate":
             # selModifyDate의 경우 content 대신 startdate와 enddate 사용
             start_date_str = f"{startdate} 00:00:00"
             end_date_str = f"{enddate} 23:59:59"
             result = joined.filter(subquery.c.max_end_time.between(start_date_str, end_date_str))
         elif key == "selWorkflowState":
-            # status_map을 사용하여 상태 코드에 따른 검색 수행
-            status_values = [value for status, value in status_map.items() if content in status]
-            if status_values:
-                result = joined.filter(subquery.c.result_type.in_(status_values))
+            # status_map을 사용하여 상태 코드에 따른 검색 
+            if content:
+                status_values = [value for status, value in status_map.items() if content in status]
+                if status_values:
+                    result = joined.filter(subquery.c.result_type.in_(status_values))
+                else:
+                    return [], 0, 0
             else:
-                return [], 0, 0
+                result = joined
         else:
-            result = joined.filter(field.contains(content))
+            if content:
+                result = joined.filter(field.contains(content))
+            else:
+                result = joined
     else:
         result = joined    
 
     result = result.filter(models.Task.deleted_at.is_(None))
+    result = result.order_by(models.Task.task_id.desc())
     
     fetched = result.offset((page - 1) * limit).limit(limit)     
     tasks = fetched.all()
@@ -113,7 +131,9 @@ def get_task_one(
     if startdate and enddate:
         start_date_str = f"{startdate} 00:00:00"
         end_date_str = f"{enddate} 23:59:59"
-        query = query.filter(models.TaskResult.end_time.between(start_date_str, end_date_str))    
+        query = query.filter(models.TaskResult.end_time.between(start_date_str, end_date_str))  
+
+    query = query.order_by(models.TaskResult.result_id.desc())  
 
     # 페이지네이션 적용
     task_results = query.order_by(models.TaskResult.task_id).offset((page - 1) * limit).limit(limit).all()
